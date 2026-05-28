@@ -127,6 +127,7 @@ class Level:
         x1 = min(self.cols - 1, (int(camX) + screenW) // tile + 1)
         # loop all rows but only the visible columns and draws each cell
         for cy in range(self.rowsN):
+            # only cells in camera range
             for cx in range(x0, x1 + 1):
                 ch = self.grid[cy][cx]
                 if ch == "#":
