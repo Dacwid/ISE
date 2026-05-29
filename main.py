@@ -33,6 +33,7 @@ selectedLevel = 0
 playerName = "Astronaut"
 gameScene = None
 assetsLoaded = False
+attempts = 1            # resets to 1 on a fresh start, +1 on each retry
 
 
 def setPlayerName(name):
@@ -67,8 +68,10 @@ loadingMenu = pygame_menu.Menu("Loading...", screenW, screenH, theme=themes.THEM
 progress = loadingMenu.add.progress_bar("Progress", progressbar_id="pb1", default=0, width=500)
 
 # initialization of all varaibles needed to run the game, all are stored in the game scene dictionary
-def startGameScene():
-    global state, gameScene
+def startGameScene(retry=False):
+    global state, gameScene, attempts
+    # fresh start (from menu) resets to 1, a retry bumps the count
+    attempts = attempts + 1 if retry else 1
     gs = {
         "level": None,
         "cam": Camera(),
@@ -97,7 +100,7 @@ def handleGameEvent(event):
             state = MENU
             return
         if event.key == pygame.K_r:
-            startGameScene()
+            startGameScene(retry=True)
             return
         if event.key == pygame.K_SPACE and gs["state"] == "play":
             gs["player"].onSpacePressed()
@@ -150,7 +153,13 @@ def updateGame(dt):
 
         # trail particels appear whehn on ground
         if gs["player"].onGround:
-            gs["particles"].trail(gs["player"].x, gs["player"].y + gs["player"].h - 2)
+            # when gravity is flipped the player stands on the ceiling, so the
+            # trail should come off the top of the player, not the bottom
+            if gs["player"].gravitySign < 0:
+                trailY = gs["player"].y + 2
+            else:
+                trailY = gs["player"].y + gs["player"].h - 2
+            gs["particles"].trail(gs["player"].x, trailY)
 
         # jetpack particles when jetpack
         if gs["player"].mode == "jetpack" and gs["player"].thrusting:
@@ -174,7 +183,7 @@ def updateGame(dt):
     elif gs["state"] == "dying":
         gs["deathTimer"] -= dt
         if gs["deathTimer"] <= 0:
-            startGameScene()
+            startGameScene(retry=True)
 
     # win
     elif gs["state"] == "win":
@@ -199,6 +208,10 @@ def drawGame():
     modeLabel = f"MODE: {gs['player'].mode.upper()}"
     t = gs["font"].render(modeLabel, True, white)
     surface.blit(t, (20 + ox, 16 + oy))
+
+    # attempt counter, top-right
+    at = gs["font"].render(f"ATTEMPT {attempts}", True, white)
+    surface.blit(at, (screenW - at.get_width() - 20 + ox, 16 + oy))
 
     if gs["state"] == "dying":
         t = gs["font"].render("you died - retrying...", True, (255, 120, 120))

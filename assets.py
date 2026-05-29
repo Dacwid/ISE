@@ -6,6 +6,7 @@ tile = 40
 
 img = {}
 sfx = {}
+anim = {}    # animation frame lists, e.g. anim["run"] = [surf, surf, ...]
 
 # directory paths so we can make the absolute path easier
 spriteDir = os.path.join(os.path.dirname(__file__), "assets", "sprites")
@@ -38,6 +39,39 @@ def loadImg(key, targetSize=None, crop=False):
     if targetSize and surf.get_size() != targetSize:
         surf = pygame.transform.scale(surf, targetSize)
     return surf
+
+# slice a sprite sheet (grid of cols x rows) into animation frame lists.
+# states maps a name -> list of 1-based frame numbers (left-to-right, top-to-bottom).
+# all frames are cropped to one shared box + scaled to the same height so the
+# character doesn't jump around or resize between frames.
+def loadSheet(key, cols, rows, states, targetH=52):
+    path = os.path.join(spriteDir, key + ".png")
+    if not os.path.isfile(path):
+        print(f"[assets] missing sheet: {path}")
+        for name in states:
+            anim[name] = [missingRect((tile, tile))]
+        return
+    sheet = pygame.image.load(path).convert_alpha()
+    fw = sheet.get_width() // cols
+    fh = sheet.get_height() // rows
+
+    def frameAt(n):                      
+        idx = n - 1
+        r, c = idx // cols, idx % cols
+        return sheet.subsurface(pygame.Rect(c * fw, r * fh, fw, fh)).copy()
+
+    # grab every frame we'll use, then find one shared bounding box (union)
+    allNums = [n for nums in states.values() for n in nums]
+    union = None
+    for n in allNums:
+        bb = frameAt(n).get_bounding_rect()
+        union = bb if union is None else union.union(bb)
+
+    # one scale factor for everything so all states match in size
+    scale = targetH / union.height
+    tw = max(1, int(union.width * scale))
+    for name, nums in states.items():
+        anim[name] = [pygame.transform.scale(frameAt(n).subsurface(union), (tw, targetH)) for n in nums]
 
 # same as above but for background
 def loadBackground(key):
@@ -93,6 +127,11 @@ def loadAll():
     tileSz = (tile, tile)
     portalSz = (tile * 2, tile * 2)
     img["astronaut"]     = loadImg("astronaut", tileSz)
+    # astronaut animation: 6x6 sheet, run=12-19 (grounded), jump=26-30 (airborne)
+    loadSheet("AstronautAnimated-Sheet", 6, 6, {
+        "run":  list(range(13, 20)),
+        "jump": list(range(26, 31)),
+    })
     img["block"]         = loadImg("block", tileSz, crop=True)
     img["spikeUp"]       = loadImg("spike_up", tileSz, crop=True)
     img["spikeDown"]     = loadImg("spike_down", tileSz, crop=True)
