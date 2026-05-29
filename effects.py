@@ -71,16 +71,14 @@ class ParticleSystem:
 
     # death effect
     def deathBurst(self, x, y):
-        colors = [portalJumpColor, portalGravityColor, portalJetpackColor, moonDust]
-        for color in colors:
-            for _ in range(14):
-                ang = random.uniform(0, 2 * math.pi)
-                spd = random.uniform(2.0, 7.0)
-                self.spawn(
-                    x, y,
-                    math.cos(ang) * spd, math.sin(ang) * spd,
-                    random.uniform(30, 55), color,
-                    radius=random.randint(3, 7), gravity=0.2,
+        for _ in range(14):
+            ang = random.uniform(0, 2 * math.pi)
+            spd = random.uniform(2.0, 7.0)
+            self.spawn(
+                x, y,
+                math.cos(ang) * spd, math.sin(ang) * spd,
+                random.uniform(30, 55), (255, 0, 0),
+                radius=random.randint(3, 7), gravity=0.2,
                 )
 
     # portal effect
