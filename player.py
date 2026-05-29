@@ -75,18 +75,11 @@ class Player:
         self.vy += gravity * dt
 
     def updateGravity(self, dt):
-        # GOAL: gravitySign should drift smoothly toward gravityTarget
-        #       (not snap instantly). Then apply gravity in that direction.
-        #
-        # HINT 1 (lerp): new = old + (target - old) * gravityFlipLerp * dt
-        # HINT 2 (apply): self.vy += gravity * self.gravitySign * dt
-        #                 -> when sign is +1 you fall down, when -1 you "fall" up
-        # HINT 3: dont normalise/clamp gravitySign to exactly +-1, the lerp
-        #         settling near +-0.98 is fine and feels analog.
+        # checks gravity based on gravity sign, and if the gravity changes, instead of instantly flipping, it flips smoothly 
+        new = self.gravitySign + (self.gravityTarget - self.gravitySign) * gravityFlipLerp * dt
+        self.gravitySign = new
+        self.vy += gravity * self.gravitySign * dt
 
-        # TODO: lerp gravitySign toward gravityTarget
-        # TODO: add gravity * gravitySign to vy
-        pass
 
     def updateJetpack(self, dt):
         # GOAL: while space is held -> push up. otherwise -> fall normally.
