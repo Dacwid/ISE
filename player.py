@@ -5,8 +5,8 @@ jumpVelocity = -12.0
 terminalVelocity = 16.0
 jetpackThrust = -0.9
 gravityFlipLerp = 0.06
-gravityFloat = 0.25        # weaker pull in gravity mode = more floaty drift
-gravityFloatMaxSpeed = 8.0 # lower terminal speed in gravity mode = slower fall
+gravityFloat = 0.55       
+gravityFloatMaxSpeed = 5.0 
 coyoteFrames = 6
 animSkip = {"run":4, "jump": 4}   # frames to wait per anim state (higher = slower)
 modeJump, modeGravity, modeJetpack = "jump", "gravity", "jetpack"
@@ -90,16 +90,18 @@ class Player:
 
         self.animate(dt)
 
-    # pick which animation is playing and advance its frame on a timer.
-    # use coyoteTimer (stable) not onGround (flickers every frame while resting)
     def animate(self, dt):
-        state = "run" if self.coyoteTimer > 0 else "jump"
+        # know technique from the internet, without it there is a bug that makes the animation keep on going and jumnping has a delay
+        # timer to check if the player has recently been onm the ground so any small times when not on grounnd, very small, still considered running
+        if self.coyoteTimer > 0 : 
+            state = "run" 
+        else:
+            state = "jump"
         frames = anim.get(state) or anim.get("run") or [img["astronaut"]]
         self.animTimer += dt
         if self.animTimer >= animSkip.get(state, 6):
             self.animTimer = 0
             self.frameIndex = (self.frameIndex + 1) % len(frames)
-        # keep index valid if the current state has fewer frames
         if self.frameIndex >= len(frames):
             self.frameIndex = 0
 
