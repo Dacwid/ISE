@@ -5,11 +5,12 @@ jumpVelocity = -12.0
 terminalVelocity = 16.0
 jetpackThrust = -0.9
 gravityFlipLerp = 0.06
-gravityFloat = 0.25        # weaker pull in gravity mode = more floaty drift
-gravityFloatMaxSpeed = 8.0 # lower terminal speed in gravity mode = slower fall
+gravityFloat = 0.55       
+gravityFloatMaxSpeed = 5.0 
 coyoteFrames = 6
+animSkip = {"run":4, "jump": 4}   # frames to wait per anim state (higher = slower)
 modeJump, modeGravity, modeJetpack = "jump", "gravity", "jetpack"
-from assets import img, playSfx
+from assets import img, anim, playSfx
 
 
 class Player:
@@ -27,6 +28,10 @@ class Player:
         self.gravityTarget = 1.0
 
         self.thrusting = False
+
+        # animation state
+        self.frameIndex = 0
+        self.animTimer = 0.0
 
     def rect(self):
         return pygame.Rect(int(self.x), int(self.y), self.w, self.h)
@@ -83,6 +88,23 @@ class Player:
         else:
             self.coyoteTimer = max(0, self.coyoteTimer - dt)
 
+        self.animate(dt)
+
+    def animate(self, dt):
+        # know technique from the internet, without it there is a bug that makes the animation keep on going and jumnping has a delay
+        # timer to check if the player has recently been onm the ground so any small times when not on grounnd, very small, still considered running
+        if self.coyoteTimer > 0 : 
+            state = "run" 
+        else:
+            state = "jump"
+        frames = anim.get(state) or anim.get("run") or [img["astronaut"]]
+        self.animTimer += dt
+        if self.animTimer >= animSkip.get(state, 6):
+            self.animTimer = 0
+            self.frameIndex = (self.frameIndex + 1) % len(frames)
+        if self.frameIndex >= len(frames):
+            self.frameIndex = 0
+
     def updateJump(self, dt):
         self.vy += gravity * dt
 
@@ -127,8 +149,21 @@ class Player:
 
     # draw player
     def draw(self, surf, camX):
-        sprite = img["astronaut"]
-        if self.mode == modeGravity and self.gravitySign < 0:
+        # grab the current animation frame (fall back to static sprite if no frames)
+        state = "run" if self.coyoteTimer > 0 else "jump"
+        frames = anim.get(state) or anim.get("run") or [img["astronaut"]]
+        sprite = frames[self.frameIndex % len(frames)]
+
+        flipped = self.mode == modeGravity and self.gravitySign < 0
+        if flipped:
             sprite = pygame.transform.flip(sprite, False, True)
-        sx, sy = int(self.x - camX), int(self.y)
-        surf.blit(sprite, (sx - 3, sy - 3))
+
+        sw, sh = sprite.get_size()
+        # center horizontally on the hitbox
+        sx = int(self.x - camX + self.w / 2 - sw / 2)
+        # normal: feet at hitbox bottom. flipped: feet at hitbox top (standing on ceiling)
+        if flipped:
+            sy = int(self.y)
+        else:
+            sy = int(self.y + self.h - sh)
+        surf.blit(sprite, (sx, sy))
