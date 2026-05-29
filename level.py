@@ -48,24 +48,10 @@ class Level:
         self.spawn = (2 * tile, (self.rowsN - 4) * tile)
 
     def updateCamera(self, cam, dt, player):
-        # GOAL: every frame, push cam.x to the right by scrollSpeed * dt.
-        #       this is what makes the world feel like its racing past.
-        #
-        # HINT 1 (basic):  cam.x += scrollSpeed * dt
-        # HINT 2 (clamp):  dont let cam.x go past worldW - screenW,
-        #                  otherwise youll see empty space at the end.
-        # HINT 3 (player keep-up): in geometry-dash the player x stays
-        #                  fixed near the left of the screen. so AFTER
-        #                  bumping the camera, set player.x = cam.x + 200
-        #                  (or whatever screen-x you want them anchored at).
-        # HINT 4 (win check):  if player.x >= self.endX: trigger win
-
-        cam.x += scrollSpeed * dt * 0.5
-
-        # TODO: clamp cam.x to [0, worldW - screenW]
-        # TODO: anchor player.x = cam.x + 200
-        # TODO: return True when player.x >= self.endX (win)
-        return False
+        cam.x += scrollSpeed * dt
+        cam.x = max(0, min(cam.x, self.worldW - screenW))
+        player.x = cam.x + 200
+        return player.x >= self.endX
 
     # get the cell type of the given coordinates, could be a solid, hazard, portal, or empty
     def cell(self, cx, cy):

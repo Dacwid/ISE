@@ -75,29 +75,14 @@ class Player:
         self.vy += gravity * dt
 
     def updateGravity(self, dt):
-        # GOAL: gravitySign should drift smoothly toward gravityTarget
-        #       (not snap instantly). Then apply gravity in that direction.
-        #
-        # HINT 1 (lerp): new = old + (target - old) * gravityFlipLerp * dt
-        # HINT 2 (apply): self.vy += gravity * self.gravitySign * dt
-        #                 -> when sign is +1 you fall down, when -1 you "fall" up
-        # HINT 3: dont normalise/clamp gravitySign to exactly +-1, the lerp
-        #         settling near +-0.98 is fine and feels analog.
-
-        # TODO: lerp gravitySign toward gravityTarget
-        # TODO: add gravity * gravitySign to vy
-        pass
+        self.gravitySign += (self.gravityTarget - self.gravitySign) * gravityFlipLerp * dt
+        self.vy += gravity * self.gravitySign * dt
 
     def updateJetpack(self, dt):
-        # GOAL: while space is held -> push up. otherwise -> fall normally.
-        # HINT 1 (held): self.vy += jetpackThrust * dt    (thrust is negative = up)
-        # HINT 2 (not held): self.vy += gravity * dt
-        # HINT 3: it's flappy-bird-ish. tune jetpackThrust and gravity in constants.py
-        #         if it feels too floaty or too sharp.
-
-        # TODO: if self.thrusting: apply upward thrust
-        # TODO: else: apply normal gravity
-        pass
+        if self.thrusting:
+            self.vy += jetpackThrust * dt
+        else:
+            self.vy += gravity * dt
 
     def moveAndCollide(self, dt, level):
         dx = 0
@@ -122,7 +107,6 @@ class Player:
                 if self.gravitySign < 0:
                     self.onGround = True
             playerRect = self.rect()
-            pass
 
     # draw player
     def draw(self, surf, camX):
