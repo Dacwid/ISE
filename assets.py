@@ -6,7 +6,7 @@ tile = 40
 
 img = {}
 sfx = {}
-anim = {}    # animation frame lists, e.g. anim["run"] = [surf, surf, ...]
+anim = {}    
 
 # directory paths so we can make the absolute path easier
 spriteDir = os.path.join(os.path.dirname(__file__), "assets", "sprites")
