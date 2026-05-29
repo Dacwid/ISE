@@ -38,7 +38,6 @@ class Level:
         self.bg = img[bgKey]
 
         # default end point = the spot the player reaches when the camera is fully scrolled
-        # (player sits 200px from the left, camera maxes at worldW - screenW)
         self.endX = self.worldW - screenW + 200
         for y in range(self.rowsN):
             for x in range(self.cols):
@@ -51,9 +50,7 @@ class Level:
     def updateCamera(self, cam, dt, player):
         # scroll camera based on scroll speed
         cam.x += scrollSpeed * dt
-        # stop the camera so it halts exactly when the end point reaches the
-        # player's anchor (200px from left). keep ~screenW-200 of level past the
-        # end marker so no empty space shows when you arrive.
+        # stop the camera so it halts exactly when the end point reaches
         maxX = self.endX - 200
         if cam.x > maxX:
             cam.x = maxX
