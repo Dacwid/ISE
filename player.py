@@ -75,8 +75,11 @@ class Player:
         self.vy += gravity * dt
 
     def updateGravity(self, dt):
-        self.gravitySign += (self.gravityTarget - self.gravitySign) * gravityFlipLerp * dt
+        # checks gravity based on gravity sign, and if the gravity changes, instead of instantly flipping, it flips smoothly 
+        new = self.gravitySign + (self.gravityTarget - self.gravitySign) * gravityFlipLerp * dt
+        self.gravitySign = new
         self.vy += gravity * self.gravitySign * dt
+
 
     def updateJetpack(self, dt):
         if self.thrusting:
