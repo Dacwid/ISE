@@ -21,6 +21,7 @@ MENU, LOADING, GAME = "menu", "loading", "game"
 updateLoading = pygame.USEREVENT + 1
 
 pygame.init()
+pygame.font.init()
 pygame.mixer.init()
 
 surface = pygame.display.set_mode((screenW, screenH))
@@ -76,7 +77,7 @@ def startGameScene():
         "state": "play",
         "deathTimer": 0.0,
         "winTimer": 0.0,
-        "font": pygame.font.SysFont("consolas", 28),
+        "font": pygame.font.Font(None, 28),
     }
     lvl = Level(levels[selectedLevel], selectedLevel)
     sx, sy = lvl.spawn
@@ -209,7 +210,7 @@ def drawGame():
 # main loop
 running = True
 while running:
-    dt = clock.tick(fps) / (1000 / 60)
+    dt = min(clock.tick(fps) / (1000 / 60), 1000)
     events = pygame.event.get()
     for event in events:
         if event.type == pygame.QUIT:

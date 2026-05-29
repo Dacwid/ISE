@@ -82,15 +82,10 @@ class Player:
 
 
     def updateJetpack(self, dt):
-        # GOAL: while space is held -> push up. otherwise -> fall normally.
-        # HINT 1 (held): self.vy += jetpackThrust * dt    (thrust is negative = up)
-        # HINT 2 (not held): self.vy += gravity * dt
-        # HINT 3: it's flappy-bird-ish. tune jetpackThrust and gravity in constants.py
-        #         if it feels too floaty or too sharp.
-
-        # TODO: if self.thrusting: apply upward thrust
-        # TODO: else: apply normal gravity
-        pass
+        if self.thrusting:
+            self.vy += jetpackThrust * dt
+        else:
+            self.vy += gravity * dt
 
     def moveAndCollide(self, dt, level):
         dx = 0
@@ -102,15 +97,19 @@ class Player:
         for tileRect in level.solidTilesNear(playerRect):
             if not playerRect.colliderect(tileRect):
                 continue
-            # TODO (collision resolve):
-            # 1) figure out if you came in from the TOP (vy > 0) or BOTTOM (vy < 0)
-            #    in gravity mode you can hit a ceiling and want onGround=True too.
-            # 2) snap self.y to tileRect.top - self.h  (landed on top of block)
-            #    or to tileRect.bottom               (banged head, or stood on ceiling)
-            # 3) zero out self.vy
-            # 4) set self.onGround = True when grounded against the current
-            #    gravity direction (positive sign -> top-hit, negative -> bottom-hit)
-            pass
+            if self.vy > 0:
+                #landing
+                self.y = tileRect.top - self.h
+                self.vy = 0
+                if self.gravitySign >= 0:
+                    self.onGround = True
+            elif self.vy < 0:
+                #hit ceiling
+                self.y = tileRect.bottom
+                self.vy = 0
+                if self.gravitySign < 0:
+                    self.onGround = True
+            playerRect = self.rect()
 
     # draw player
     def draw(self, surf, camX):
