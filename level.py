@@ -1,7 +1,7 @@
 import pygame
 screenW = 1280
 tile = 40
-scrollSpeed = 6
+scrollSpeed = 4
 modeJump, modeGravity, modeJetpack = "jump", "gravity", "jetpack"
 from assets import img
 
@@ -37,8 +37,9 @@ class Level:
         bgKey = "bgLevel" + str(idx + 1)
         self.bg = img[bgKey]
 
-        # find end portal, if no end portal then sed to last 3 tiles from end of level
-        self.endX = self.worldW - tile * 3
+        # default end point = the spot the player reaches when the camera is fully scrolled
+        # (player sits 200px from the left, camera maxes at worldW - screenW)
+        self.endX = self.worldW - screenW + 200
         for y in range(self.rowsN):
             for x in range(self.cols):
                 if self.grid[y][x] == "E":
@@ -50,8 +51,10 @@ class Level:
     def updateCamera(self, cam, dt, player):
         # scroll camera based on scroll speed
         cam.x += scrollSpeed * dt
-        # claculate the max camera positon and dont let it go past end
-        maxX = self.worldW - screenW
+        # stop the camera so it halts exactly when the end point reaches the
+        # player's anchor (200px from left). keep ~screenW-200 of level past the
+        # end marker so no empty space shows when you arrive.
+        maxX = self.endX - 200
         if cam.x > maxX:
             cam.x = maxX
         # player is based on camera position + 200 pixels
@@ -134,6 +137,9 @@ class Level:
                     key = {modeJump: "portalJump",
                            modeGravity: "portalGravity",
                            modeJetpack: "portalJetpack"}[legendPortal[ch]]
-                    surf.blit(img[key], (cx * tile - camX, cy * tile))
+                    # portal art is 2x2 tiles
+                    surf.blit(img[key], (cx * tile - camX - tile // 2, cy * tile - tile // 2))
                 elif ch == "E":
-                    surf.blit(img["spaceship"], (cx * tile - camX, cy * tile - tile * 3))
+                    # cave (level 1) ends at a cave exit, surface (level 2) ends at the rocket
+                    endKey = "spaceship" if self.idx == 1 else "caveExit"
+                    surf.blit(img[endKey], (cx * tile - camX, cy * tile - tile * 3))

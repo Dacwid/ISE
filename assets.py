@@ -22,7 +22,7 @@ def missingRect(size):
     return s
 
 # loading image function
-def loadImg(key, targetSize=None):
+def loadImg(key, targetSize=None, crop=False):
     # we first make the absoluate path to the image file based on image file name
     path = os.path.join(spriteDir, key + ".png")
     # if doesnt exist then print error
@@ -31,6 +31,10 @@ def loadImg(key, targetSize=None):
         return missingRect(targetSize or (tile, tile))
     # save it as a surface and resize if resize is needed
     surf = pygame.image.load(path).convert_alpha()
+    # crop away transparent padding 
+    if crop:
+        bbox = surf.get_bounding_rect()
+        surf = surf.subsurface(bbox).copy()
     if targetSize and surf.get_size() != targetSize:
         surf = pygame.transform.scale(surf, targetSize)
     return surf
@@ -87,14 +91,16 @@ def playSfx(key):
 # load all assets into the dictionaries for easier access
 def loadAll():
     tileSz = (tile, tile)
+    portalSz = (tile * 2, tile * 2)
     img["astronaut"]     = loadImg("astronaut", tileSz)
-    img["block"]         = loadImg("block", tileSz)
-    img["spikeUp"]       = loadImg("spike_up", tileSz)
-    img["spikeDown"]     = loadImg("spike_down", tileSz)
-    img["portalJump"]    = loadImg("portal_jump", tileSz)
-    img["portalGravity"] = loadImg("portal_gravity", tileSz)
-    img["portalJetpack"] = loadImg("portal_jetpack", tileSz)
+    img["block"]         = loadImg("block", tileSz, crop=True)
+    img["spikeUp"]       = loadImg("spike_up", tileSz, crop=True)
+    img["spikeDown"]     = loadImg("spike_down", tileSz, crop=True)
+    img["portalJump"]    = loadImg("portal_jump", portalSz)
+    img["portalGravity"] = loadImg("portal_gravity", portalSz)
+    img["portalJetpack"] = loadImg("portal_jetpack", portalSz)
     img["spaceship"]     = loadImg("spaceship", (tile * 2, tile * 4))
+    img["caveExit"]      = loadImg("cave_exit", (tile * 2, tile * 4))
     img["bgLevel1"]      = loadBackground("bg_level1")
     img["bgLevel2"]      = loadBackground("bg_level2")
 
