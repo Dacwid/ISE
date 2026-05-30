@@ -284,7 +284,7 @@ def startGameScene(retry=False):
     sx, sy = lvl.spawn
     gs["level"] = lvl
     gs["player"] = Player(sx, sy)
-    assets.playMusic(f"music_level{selectedLevel + 1}")
+    assets.playMusic(f"music_level{selectedLevel + 1}", volume = 0.2)
     gameScene = gs
     state = GAME
 
@@ -334,10 +334,11 @@ def updateGame(dt):
             gs["particles"].gravityFlipBurst(px, py, flippingUp)
             gs["cam"].addShake(0.25)
 
-            #dust on landings
+        #dust on landings
         if gs["player"].onGround and not prevOnGround and abs(prevVy) > 5:
             px = gs["player"].x + gs["player"].w / 2
             py = gs["player"].y + gs["player"].h
+            assets.playSfx("land")
             gs["particles"].landDust(px, py)
 
         # check for win
@@ -391,6 +392,7 @@ def updateGame(dt):
             gs["particles"].jetpackFlame(px, py)
             gs["particles"].jetpackSideVents(px, gs["player"].y + gs["player"].h / 2)
             gs["particles"].jetpackAura(px, gs["player"].y + gs["player"].h / 2)
+            assets.sfx["thrust"].set_volume(0.2 + 0.3 * random.random())
 
         # jetpack ignition burst (one-shot on thrust start)
         if gs["player"].thrustStarted:

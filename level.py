@@ -173,4 +173,8 @@ class Level:
                 elif ch == "E":
                     # cave (level 1) ends at a cave exit, surface (level 2) ends at the rocket
                     endKey = "spaceship" if self.idx == 1 else "caveExit"
-                    surf.blit(img[endKey], (cx * tile - camX + shakeOx, cy * tile - tile * 3 + shakeOy))
+                    if (endKey == "spaceship" ) :
+                        pygame.transform.scale(img[endKey], (tile * 8, tile * 12))
+                        surf.blit(img[endKey], (cx * tile - camX + shakeOx, (cy * tile - tile * 4 + shakeOy) - 40 * 5))
+                    else :
+                        surf.blit(img[endKey], (cx * tile - camX + shakeOx, cy * tile - tile * 4 + shakeOy))

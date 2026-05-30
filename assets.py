@@ -134,8 +134,8 @@ def loadAll():
     img["portalJump"]    = loadImg("portal_jump", portalSz)
     img["portalGravity"] = loadImg("portal_gravity", portalSz)
     img["portalJetpack"] = loadImg("portal_jetpack", portalSz)
-    img["spaceship"]     = loadImg("spaceship", (tile * 2, tile * 4))
-    img["caveExit"]      = loadImg("cave_exit", (tile * 2, tile * 4))
+    img["spaceship"]     = loadImg("spaceship", (tile * 5, tile * 12), crop=True)
+    img["caveExit"]      = loadImg("cave_exit", (tile * 3, tile * 5))
     img["bgLevel1"]      = loadBackground("bg_level1")
     img["bgLevel2"]      = loadBackground("bg_level2")
     img["earth"]        = loadImg("earth", (125, 125), crop=True)
@@ -145,6 +145,7 @@ def loadAll():
     sfx["portal"]       = loadSfx("portal")
     sfx["thrust"]       = loadSfx("thrust")
     sfx["gravity_flip"] = loadSfx("gravity_flip")
+    sfx["land"]         = loadSfx("land")
     for s in sfx.values():
         if s:
-            s.set_volume(0.5)
+            s.set_volume(0.2)
