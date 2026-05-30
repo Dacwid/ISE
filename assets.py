@@ -137,6 +137,7 @@ def loadAll():
     img["caveExit"]      = loadImg("cave_exit", (tile * 2, tile * 4))
     img["bgLevel1"]      = loadBackground("bg_level1")
     img["bgLevel2"]      = loadBackground("bg_level2")
+    img["earth"]        = loadImg("earth", (200, 200), crop=True)
 
     sfx["jump"]         = loadSfx("jump")
     sfx["death"]        = loadSfx("death")
