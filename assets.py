@@ -11,6 +11,7 @@ anim = {}
 # directory paths so we can make the absolute path easier
 spriteDir = os.path.join(os.path.dirname(__file__), "assets", "sprites")
 audioDir = os.path.join(os.path.dirname(__file__), "assets", "audio")
+assetsDir = os.path.join(os.path.dirname(__file__), "assets")
 
 
 # when something is missing, this is called to replace that image with a pink box
@@ -88,7 +89,7 @@ def loadBackground(key):
 def loadSfx(key):
     # check each possible audio file extension type 
     for ext in (".wav", ".ogg", ".mp3"):
-        path = os.path.join(audioDir, key + ext)
+        path = os.path.join(assetsDir, "sfx", key + ext)
         if os.path.isfile(path):
             return pygame.mixer.Sound(path)
     print(f"[assets] missing sfx: {key}")
@@ -98,7 +99,7 @@ def loadSfx(key):
 def playMusic(name, volume=0.4, loop=True):
     # make path
     for ext in (".ogg", ".mp3", ".wav"):
-        path = os.path.join(audioDir, name + ext)
+        path = os.path.join(assetsDir, "music", name + ext)
         # if found setup music and play
         if os.path.isfile(path):
             pygame.mixer.music.load(path)

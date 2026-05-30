@@ -9,6 +9,11 @@ legendSolid = {"#"}
 legendHazard = {"^", "v"}
 legendPortal = {"J": modeJump, "G": modeGravity, "F": modeJetpack}
 
+portalColors = {
+    modeJump: (120, 220, 120),
+    modeGravity: (180, 120, 240),
+    modeJetpack: (250, 180, 70),
+}
 
 class Level:
     # loads level from text file into a grid
@@ -46,6 +51,11 @@ class Level:
 
         # set player spanw point which is 2 tiles from left and 4 tiles from bottom
         self.spawn = (2 * tile, (self.rowsN - 4) * tile)
+
+        #preload spike glow
+        self._spikeGlowSurf = pygame.Surface((tile + 20, tile + 20), pygame.SRCALPHA)
+        pygame.draw.circle(self._spikeGlowSurf, (255, 60, 30, 35),
+                           ((tile + 20) // 2, (tile + 20) // 2), (tile + 20) // 2)
 
     def updateCamera(self, cam, dt, player):
         # scroll camera based on scroll speed
@@ -96,6 +106,19 @@ class Level:
                     results.append((ch, hb))
         return results
 
+    #ambient glow
+    def allHazardsVisible(self, camX, viewW):
+        results = []
+        x0 = max(0, camX // tile - 1)
+        x1 = min(self.cols - 1, (camX + viewW) // tile + 1)
+        for cy in range(self.rowsN):
+            for cx in range(x0, x1 + 1):
+                ch = self.cell(cx, cy)
+                if ch in legendHazard:
+                    hb = pygame.Rect(cx * tile + 8, cy * tile + 14, tile - 16, tile - 18)
+                    results.append((ch, hb))
+        return results
+
     # again but for portals
     def portalsNear(self, rect):
         results = []
@@ -110,7 +133,7 @@ class Level:
                     results.append((legendPortal[ch], pygame.Rect(cx * tile, cy * tile, tile, tile)))
         return results
 
-    def draw(self, surf, camX):
+    def draw(self, surf, camX, portalGlow=None, shakeOx=0, shakeOy=0):
         bgX = -int(camX * 0.3) % self.bg.get_width()
         surf.blit(self.bg, (-bgX, 0))
         if bgX > 0:
@@ -127,19 +150,27 @@ class Level:
             # only cells in camera range
             for cx in range(x0, x1 + 1):
                 ch = self.grid[cy][cx]
+                sx = cx * tile - camX + shakeOx
+                sy = cy * tile + shakeOy
                 if ch == "#":
-                    surf.blit(img["block"], (cx * tile - camX, cy * tile))
+                    surf.blit(img["block"], (sx,sy))
                 elif ch == "^":
-                    surf.blit(img["spikeUp"], (cx * tile - camX, cy * tile))
+                    surf.blit(self._spikeGlowSurf, (sx - 10, sy - 10))
+                    surf.blit(img["spikeUp"], (sx,sy))
                 elif ch == "v":
-                    surf.blit(img["spikeDown"], (cx * tile - camX, cy * tile))
+                    surf.blit(self._spikeGlowSurf, (sx - 10, sy - 10))
+                    surf.blit(img["spikeDown"], (sx,sy))
                 elif ch in legendPortal:
+                    mode = legendPortal[ch]
                     key = {modeJump: "portalJump",
                            modeGravity: "portalGravity",
-                           modeJetpack: "portalJetpack"}[legendPortal[ch]]
-                    # portal art is 2x2 tiles
-                    surf.blit(img[key], (cx * tile - camX - tile // 2, cy * tile - tile // 2))
+                           modeJetpack: "portalJetpack"}[mode]
+                    pcx = cx * tile - camX + tile // 2
+                    pcy = cy * tile + tile // 2
+                    if portalGlow:
+                        portalGlow.draw(surf, pcx, pcy, portalColors[mode], 0)
+                    surf.blit(img[key], (cx * tile - camX - tile // 2 + shakeOx, cy * tile - tile // 2 + shakeOy))
                 elif ch == "E":
                     # cave (level 1) ends at a cave exit, surface (level 2) ends at the rocket
                     endKey = "spaceship" if self.idx == 1 else "caveExit"
-                    surf.blit(img[endKey], (cx * tile - camX, cy * tile - tile * 3))
+                    surf.blit(img[endKey], (cx * tile - camX + shakeOx, cy * tile - tile * 3 + shakeOy))
