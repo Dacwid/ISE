@@ -115,6 +115,9 @@ class Level:
         surf.blit(self.bg, (-bgX, 0))
         if bgX > 0:
             surf.blit(self.bg, (self.bg.get_width() - bgX, 0))
+        # draw earth as seperate entity so that it doesnt move with bg
+        if self.idx == 1:
+            surf.blit(img["earth"], (screenW - 350, 20))
 
         # convert camera pixel position to tile columns to find which tiles are visible
         x0 = max(0, int(camX) // tile - 1)
