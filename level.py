@@ -115,6 +115,9 @@ class Level:
         surf.blit(self.bg, (-bgX, 0))
         if bgX > 0:
             surf.blit(self.bg, (self.bg.get_width() - bgX, 0))
+        # draw earth as seperate entity so that it doesnt move with bg
+        if self.idx == 1:
+            surf.blit(img["earth"], (screenW - 350, 20))
 
         # convert camera pixel position to tile columns to find which tiles are visible
         x0 = max(0, int(camX) // tile - 1)
@@ -140,3 +143,5 @@ class Level:
                     # cave (level 1) ends at a cave exit, surface (level 2) ends at the rocket
                     endKey = "spaceship" if self.idx == 1 else "caveExit"
                     surf.blit(img[endKey], (cx * tile - camX, cy * tile - tile * 3))
+        if self.idx == 1:
+            surf.blit(img["earth"], (self.worldW - 400 - camX, self.worldH - 400 - tile * 2))

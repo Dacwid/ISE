@@ -32,6 +32,10 @@ class Player:
         # animation state
         self.frameIndex = 0
         self.animTimer = 0.0
+        self.spinAngle = 0.0
+        self.spinScale = 1.0
+        self.spinFallTimer = 0.0
+        self.spinTimer = 0.0
 
     def rect(self):
         return pygame.Rect(int(self.x), int(self.y), self.w, self.h)
@@ -159,11 +163,36 @@ class Player:
             sprite = pygame.transform.flip(sprite, False, True)
 
         sw, sh = sprite.get_size()
-        # center horizontally on the hitbox
+        # get center of hitbox x coordinate
         sx = int(self.x - camX + self.w / 2 - sw / 2)
-        # normal: feet at hitbox bottom. flipped: feet at hitbox top (standing on ceiling)
         if flipped:
             sy = int(self.y)
         else:
             sy = int(self.y + self.h - sh)
         surf.blit(sprite, (sx, sy))
+
+    # player spin
+    def updateSpin(self, dt):
+        self.spinAngle += 12 * dt
+        if self.spinFallTimer > 0:
+            self.spinFallTimer -= dt
+            self.y += self.vy * dt
+        else:
+            self.spinTimer -= dt
+            if self.spinTimer > 0:
+                self.spinScale = self.spinTimer / 60.0
+            else:
+                self.spinScale = 0.0
+                self.spinAngle = 0.0
+
+
+    def drawSpin(self, surf, camX):
+        state = "run" if self.coyoteTimer > 0 else "jump"
+        frames = anim.get(state) or anim.get("run") or [img["astronaut"]]
+        sprite = frames[self.frameIndex % len(frames)]
+
+        spinSprite = pygame.transform.rotozoom(sprite, self.spinAngle, self.spinScale)
+        sw, sh = spinSprite.get_size()
+        sx = int(self.x - camX + self.w / 2 - sw / 2)
+        sy = int(self.y + self.h / 2 - sh / 2)
+        surf.blit(spinSprite, (sx, sy))

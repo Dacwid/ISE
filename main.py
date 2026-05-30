@@ -172,7 +172,7 @@ def updateGame(dt):
             )
 
         # out of bounds check
-        if gs["player"].y > gs["level"].worldH or gs["player"].y < -gs["player"].h:
+        if gs["player"].y > gs["level"].worldH:
             gs["state"] = "dying"
             gs["deathTimer"] = 70
             assets.playSfx("death")
@@ -181,12 +181,32 @@ def updateGame(dt):
                 gs["player"].y + gs["player"].h / 2
             )
             gs["cam"].addShake(0.9)
+        elif gs["player"].y < -gs["player"].h:
+            gs["state"] = "deathSpin"
+            gs["player"].spinTimer = 60.0
+            gs["player"].spinFallTimer = 20.0
+            gs["player"].vy = 2.0
+            assets.playSfx("death")
+
 
     # death
     elif gs["state"] == "dying":
         gs["deathTimer"] -= dt
         if gs["deathTimer"] <= 0:
             startGameScene(retry=True)
+
+    # top death
+    elif gs["state"] == "deathSpin":
+        gs["player"].updateSpin(dt)
+        if gs["player"].spinTimer <= 0:
+            gs["state"] = "dying"
+            gs["deathTimer"] = 70
+            gs["particles"].deathBurst(
+                gs["player"].x + gs["player"].w / 2,
+                gs["player"].y + gs["player"].h / 2
+            )
+            gs["cam"].addShake(0.9)
+
 
     # win
     elif gs["state"] == "win":
@@ -206,6 +226,8 @@ def drawGame():
     gs["level"].draw(surface, gs["cam"].x)
     if gs["state"] == "play":
         gs["player"].draw(surface, gs["cam"].x)
+    elif gs["state"] == "deathSpin":
+        gs["player"].drawSpin(surface, gs["cam"].x)
     gs["particles"].draw(surface, gs["cam"].x)
 
     # the current mode
