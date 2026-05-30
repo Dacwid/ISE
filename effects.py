@@ -291,8 +291,6 @@ class StarField:
 class GravityFlipEffect:
     def __init__(self):
         self.rings = []
-        self.chroma_timer = 0.0
-        self.chroma_max = 0.0
         self.flip_dir = 1
 
     def trigger(self, x, y, flippingUp):
@@ -307,12 +305,8 @@ class GravityFlipEffect:
                 "max_life": 35.0,
                 "delay": float(delay),
             })
-        # chromatic aberration flash
-        self.chroma_timer = 18.0
-        self.chroma_max = 18.0
 
     def update(self, dt):
-        self.chroma_timer = max(0.0, self.chroma_timer - dt)
         for i in range(len(self.rings) - 1, -1, -1):
             r = self.rings[i]
             r["delay"] -= dt
@@ -345,16 +339,3 @@ class GravityFlipEffect:
             pygame.draw.circle(ring_surf, col,
                                (radius + 2, radius + 2), radius, max(1, int(3 * t + 1)))
             surf.blit(ring_surf, (sx - radius - 2, sy - radius - 2))
-
-        if self.chroma_timer > 0:
-            t = self.chroma_timer / self.chroma_max
-            shift = int(t * 7)          # max 7px colour separation
-            if shift > 0:
-                w, h = surf.get_size()
-                # take a small strip and blit it slightly offset in R and B channels
-                # efficient approximation: blit the entire surface shifted with blend
-                chroma = pygame.Surface((w, h), pygame.SRCALPHA)
-                chroma.fill((255, 0, 0, int(50 * t)))   # red tint shifted right
-                surf.blit(chroma, (shift, 0), special_flags=pygame.BLEND_RGBA_ADD)
-                chroma.fill((0, 0, 255, int(50 * t)))   # blue tint shifted left
-                surf.blit(chroma, (-shift, 0), special_flags=pygame.BLEND_RGBA_ADD)
