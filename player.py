@@ -26,8 +26,10 @@ class Player:
 
         self.gravitySign = 1.0
         self.gravityTarget = 1.0
+        self.gravityFlipped = False   # flag set in onSpacePressed, consumed in updateGame
 
         self.thrusting = False
+        self.thrustStarted = False  # one-shot flag for jetpack ignition shockwave
 
         # animation state
         self.frameIndex = 0
@@ -61,6 +63,7 @@ class Player:
             # if in gravity switching mode then switch gravity
         elif self.mode == modeGravity:
             self.gravityTarget *= -1
+            self.gravityFlipped = True   # signal to updateGame that a flip just occurred
             playSfx("gravity_flip")
 
     # hold space for jetpack
@@ -70,6 +73,7 @@ class Player:
             self.thrusting = held
             if held and not was:
                 playSfx("thrust")
+                self.thrustStarted = True   # signal for shockwave burst
             if not held and was:
                 pass
 

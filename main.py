@@ -1,7 +1,14 @@
 import sys
 import pygame
+import random
+import math
 import pygame_menu
 from pygame_menu import themes
+import assets
+from player import Player
+from level import Level
+from effects import ParticleSystem, Camera, ScreenFlash, PortalGlow, StarField, GravityFlipEffect
+import os
 
 screenW, screenH = 1280, 720
 fps = 60
@@ -12,12 +19,9 @@ black = (10, 10, 20)
 portalJumpColor = (120, 220, 120)
 portalGravityColor = (180, 120, 240)
 portalJetpackColor = (250, 180, 70)
-import assets
-from player import Player
-from level import Level
-from effects import ParticleSystem, Camera
+font_path = os.path.join(os.environ['WINDIR'], 'Fonts', 'consola.ttf')
 
-MENU, LOADING, GAME, CUTSCENE, NAME_INPUT = "menu", "loading", "game", "cutscene", "name_input"
+MENU, LOADING, GAME, CUTSCENE, NAME_INPUT, FLYAWAY = "menu", "loading", "game", "cutscene", "name_input", "flyaway"
 updateLoading = pygame.USEREVENT + 1
 
 pygame.init()
@@ -83,9 +87,9 @@ cutsceneFading = False
 cutsceneFadeAlpha = 0.0
 cutsceneFadeOverlay = pygame.Surface((screenW, screenH))
 cutsceneFadeOverlay.fill((0, 0, 0))
-dlgFont  = pygame.font.SysFont("consolas", 22)
-nameFont = pygame.font.SysFont("consolas", 24)
-hintFont = pygame.font.SysFont("consolas", 18)
+dlgFont = pygame.font.Font(font_path, 22)
+nameFont = pygame.font.Font(font_path, 24)
+hintFont = pygame.font.Font(font_path, 18)
 skipBtn  = pygame.Rect(screenW - 120, 20, 100, 36)
 
 
@@ -106,8 +110,8 @@ def wrapText(text, font, maxWidth):
 
 
 # --- name input ---
-nameInputFont = pygame.font.SysFont("consolas", 32)
-nameTitleFont = pygame.font.SysFont("consolas", 52)
+nameInputFont = pygame.font.Font(font_path, 32)
+nameTitleFont = pygame.font.Font(font_path, 52)
 
 def handleNameInputEvent(event):
     global playerName, nameInput, state, dialogue
@@ -143,8 +147,7 @@ def drawNameInput():
     cursor = "|" if nameCursorVisible else " "
     inputSurf = nameInputFont.render(nameInput + cursor, True, white)
     surface.blit(inputSurf, (boxX + 16, boxY + (boxH - inputSurf.get_height()) // 2))
-
-    hint = pygame.font.SysFont("consolas", 18).render("ENTER to continue", True, (100, 100, 120))
+    hint = pygame.font.Font(font_path, 18).render("ENTER to continue", True, (100, 100, 120))
     surface.blit(hint, hint.get_rect(center=(screenW // 2, screenH // 2 + 65)))
 
 
@@ -244,6 +247,11 @@ mainMenu.add.button("Quit", quitGame)
 loadingMenu = pygame_menu.Menu("Loading...", screenW, screenH, theme=themes.THEME_DARK)
 progress = loadingMenu.add.progress_bar("Progress", progressbar_id="pb1", default=0, width=500)
 
+portalColors = {
+    "jump": portalJumpColor,
+    "gravity": portalGravityColor,
+    "jetpack": portalJetpackColor,
+}
 
 # --- game ---
 # initialization of all varaibles needed to run the game, all are stored in the game scene dictionary
@@ -263,7 +271,15 @@ def startGameScene(retry=False):
         "deathTimer": 0.0,
         "winTimer": 0.0,
         "font": pygame.font.Font(None, 28),
+        "flash": ScreenFlash(),
+        "portalGlow": PortalGlow(),
+        "gravityFlip": GravityFlipEffect(),
+        "stars": StarField(150),
+        "fireworkTimer": 0.0,
+        "prevOnGround": False,
+        "prevVy": 0.0,
     }
+
     lvl = Level(levels[selectedLevel], selectedLevel)
     sx, sy = lvl.spawn
     gs["level"] = lvl
@@ -271,7 +287,6 @@ def startGameScene(retry=False):
     assets.playMusic(f"music_level{selectedLevel + 1}")
     gameScene = gs
     state = GAME
-
 
 # keybinds
 def handleGameEvent(event):
@@ -296,16 +311,42 @@ def updateGame(dt):
     gs = gameScene
     keys = pygame.key.get_pressed()
 
-    # play state
+    gs["flash"].update(dt)
+    gs["portalGlow"].update(dt)
+    gs["gravityFlip"].update(dt)
+
+    #play state
     if gs["state"] == "play":
+        prevVy = gs["player"].vy
+        prevOnGround = gs["player"].onGround
+        justFlipped = gs["player"].gravityFlipped
+        gs["player"].gravityFlipped = False
+
         gs["player"].onSpaceHeld(keys[pygame.K_SPACE])
         gs["player"].update(dt, gs["level"])
+
+        #gravity flip effect
+        if justFlipped and gs["player"].mode == "gravity":
+            px = gs["player"].x + gs["player"].w / 2
+            py = gs["player"].y + gs["player"].h / 2
+            flippingUp = gs["player"].gravityTarget < 0
+            gs["gravityFlip"].trigger(px, py, flippingUp)
+            gs["particles"].gravityFlipBurst(px, py, flippingUp)
+            gs["cam"].addShake(0.25)
+
+            #dust on landings
+        if gs["player"].onGround and not prevOnGround and abs(prevVy) > 5:
+            px = gs["player"].x + gs["player"].w / 2
+            py = gs["player"].y + gs["player"].h
+            gs["particles"].landDust(px, py)
 
         # check for win
         if gs["level"].updateCamera(gs["cam"], dt, gs["player"]):
             gs["state"] = "win"
-            gs["winTimer"] = 120
+            gs["winTimer"] = 180
+            gs["fireworkTimer"] = 0
             assets.playSfx("portal")
+            gs["flash"].trigger((200, 255, 200), 20)
 
         # check for collision with traps
         playerRect = gs["player"].rect()
@@ -319,6 +360,7 @@ def updateGame(dt):
                     gs["player"].y + gs["player"].h / 2
                 )
                 gs["cam"].addShake(0.9)
+                gs["flash"].trigger((255, 60, 60), 22)
                 break
 
         # check for collision with portals
@@ -328,12 +370,9 @@ def updateGame(dt):
                     gs["player"].setMode(mode)
                     assets.playSfx("portal")
                     cx, cy = portalRect.centerx, portalRect.centery
-                    sparkColor = {
-                        "jump": portalJumpColor,
-                        "gravity": portalGravityColor,
-                        "jetpack": portalJetpackColor,
-                    }[mode]
+                    sparkColor = portalColors[mode]
                     gs["particles"].portalSparks(cx, cy, sparkColor)
+                    gs["flash"].trigger(sparkColor, 14)
 
         # trail particles appear when on ground
         if gs["player"].onGround:
@@ -343,14 +382,29 @@ def updateGame(dt):
                 trailY = gs["player"].y + 2
             else:
                 trailY = gs["player"].y + gs["player"].h - 2
-            gs["particles"].trail(gs["player"].x, trailY)
+            gs["particles"].trail(gs["player"].x, trailY, mode=gs["player"].mode)
 
-        # jetpack particles when jetpack
+    # jetpack particles when jetpack
         if gs["player"].mode == "jetpack" and gs["player"].thrusting:
-            gs["particles"].jetpackFlame(
-                gs["player"].x + gs["player"].w / 2,
-                gs["player"].y + gs["player"].h
-            )
+            px = gs["player"].x + gs["player"].w / 2
+            py = gs["player"].y + gs["player"].h
+            gs["particles"].jetpackFlame(px, py)
+            gs["particles"].jetpackSideVents(px, gs["player"].y + gs["player"].h / 2)
+            gs["particles"].jetpackAura(px, gs["player"].y + gs["player"].h / 2)
+
+        # jetpack ignition burst (one-shot on thrust start)
+        if gs["player"].thrustStarted:
+            gs["player"].thrustStarted = False
+            px = gs["player"].x + gs["player"].w / 2
+            py = gs["player"].y + gs["player"].h / 2
+            gs["particles"].jetpackIgnition(px, py)
+
+        #spike ambient glow
+        if random.random() < 0.25:
+            spikes = gs["level"].allHazardsVisible(int(gs["cam"].x), screenW)
+            if spikes:
+                _ch, hb = random.choice(spikes)
+                gs["particles"].spikeGlow(hb.centerx, hb.centery)
 
         # out of bounds check
         if gs["player"].y > gs["level"].worldH:
@@ -362,13 +416,13 @@ def updateGame(dt):
                 gs["player"].y + gs["player"].h / 2
             )
             gs["cam"].addShake(0.9)
+            gs["flash"].trigger((255, 60, 60), 22)
         elif gs["player"].y < -gs["player"].h:
             gs["state"] = "deathSpin"
             gs["player"].spinTimer = 60.0
             gs["player"].spinFallTimer = 20.0
             gs["player"].vy = 2.0
             assets.playSfx("death")
-
 
     # death
     elif gs["state"] == "dying":
@@ -387,31 +441,168 @@ def updateGame(dt):
                 gs["player"].y + gs["player"].h / 2
             )
             gs["cam"].addShake(0.9)
-
+            gs["flash"].trigger((255, 60, 60), 22)
 
     # win
     elif gs["state"] == "win":
         gs["winTimer"] -= dt
+        gs["fireworkTimer"] -= dt
+        if gs["fireworkTimer"] <= 0:
+            gs["fireworkTimer"] = random.uniform(12, 25)
+            fx = random.uniform(200, screenW - 200)
+            fy = random.uniform(80, screenH - 150)
+            gs["particles"].winFireworks(fx + gs["cam"].x, fy)
+            gs["flash"].trigger(
+                random.choice([(255, 220, 50), (100, 220, 255), (180, 100, 255)]),
+                8
+            )
         if gs["winTimer"] <= 0:
             assets.stopMusic()
-            assets.playMusic("music_menu")
-            state = MENU
+            if selectedLevel == 1:
+                startFlyaway()
+            else:
+                state = MENU
 
     # update camera and particles every frame
     gs["cam"].update(dt)
     gs["particles"].update(dt)
 
+def startFlyaway():
+    global state, flyawayScene
+    ship_img = assets.img["spaceship"]
+    sw, sh = ship_img.get_size()
+    # Start centred, just below screen bottom, then fly up and off-screen
+    flyawayScene = {
+        "ship_x": screenW / 2 - sw / 2,
+        "ship_y": float(screenH + 20),      # start just below screen
+        "ship_vy": -2.0,                     # initial upward speed (pixels/frame-unit)
+        "ship_accel": -0.08,                 # accelerate upward each frame
+        "ship_wobble": 0.0,                  # horizontal sway timer
+        "phase": "rise",                     # rise → gone → done
+        "timer": 0.0,
+        "stars": StarField(200),
+        "particles": ParticleSystem(),
+        "flame_timer": 0.0,
+        "alpha": 255,
+        "font": pygame.font.Font(None, 52),
+        "small_font": pygame.font.Font(None, 32),
+        "text_alpha": 0,
+        "text_timer": 0.0,
+    }
+    state = FLYAWAY
+
+def updateFlyaway(dt):
+    global state, flyawayScene
+    fs = flyawayScene
+    ship_img = assets.img["spaceship"]
+    sw, sh = ship_img.get_size()
+
+    fs["timer"] += dt
+
+    if fs["phase"] == "rise":
+        # Accelerate upward
+        fs["ship_vy"] += fs["ship_accel"] * dt
+        fs["ship_y"] += fs["ship_vy"] * dt
+
+        # Gentle horizontal wobble
+        fs["ship_wobble"] += 0.04 * dt
+        fs["ship_x"] = screenW / 2 - sw / 2 + math.sin(fs["ship_wobble"]) * 18
+
+        # Engine flame particles
+        fs["flame_timer"] -= dt
+        if fs["flame_timer"] <= 0:
+            fs["flame_timer"] = 2
+            cx = fs["ship_x"] + sw / 2
+            cy = fs["ship_y"] + sh
+            for _ in range(5):
+                color = random.choice([(255,180,60),(255,120,30),(255,220,80),(200,80,20)])
+                angle = random.uniform(math.pi * 0.4, math.pi * 0.6)
+                spd = random.uniform(4, 9)
+                fs["particles"].spawn(
+                    cx + random.uniform(-10, 10), cy,
+                    math.cos(angle) * spd * 0.3,
+                    math.sin(angle) * spd,
+                    life=25, color=color, radius=random.randint(4, 9), gravity=0.05, glow=True
+                )
+            # Exhaust smoke
+            for _ in range(3):
+                fs["particles"].spawn(
+                    cx + random.uniform(-8, 8), cy + random.uniform(5, 20),
+                    random.uniform(-0.5, 0.5), random.uniform(1.5, 3.0),
+                    life=40, color=(180,160,140), radius=random.randint(5,10), gravity=0.0, glow=False
+                )
+
+        # Random star sparkles while rising
+        if random.random() < 0.3:
+            fx = random.uniform(0, screenW)
+            fy = random.uniform(0, screenH * 0.6)
+            fs["particles"].spawn(fx, fy, 0, 0, life=20,
+                                  color=(255,255,200), radius=2, glow=True)
+
+        # Fade in text after ship clears screen centre
+        if fs["ship_y"] < screenH * 0.35:
+            fs["text_alpha"] = min(255, fs["text_alpha"] + int(4 * dt))
+
+        # Ship exits screen top → start fade-out phase
+        if fs["ship_y"] + sh < 0:
+            fs["phase"] = "fade"
+            fs["fade_timer"] = 90.0
+
+    elif fs["phase"] == "fade":
+        fs["fade_timer"] -= dt
+        fs["alpha"] = max(0, int(255 * (fs["fade_timer"] / 90.0)))
+        if fs["fade_timer"] <= 0:
+            fs["phase"] = "done"
+
+    elif fs["phase"] == "done":
+        assets.stopMusic()
+        state = MENU
+
+    fs["stars"].draw(surface, 0)   # drawn in update for ordering
+    fs["particles"].update(dt)
+
+def drawFlyaway():
+    fs = flyawayScene
+    surface.fill((5, 5, 18))        # deep space black
+    fs["stars"].draw(surface, 0)
+
+    ship_img = assets.img["spaceship"]
+    sw, sh = ship_img.get_size()
+
+    # Draw ship (with alpha fade if fading out)
+    if fs["phase"] in ("rise",):
+        surface.blit(ship_img, (int(fs["ship_x"]), int(fs["ship_y"])))
+    elif fs["phase"] == "fade":
+        fade_surf = ship_img.copy()
+        fade_surf.set_alpha(fs["alpha"])
+        surface.blit(fade_surf, (int(fs["ship_x"]), int(fs["ship_y"])))
+
+    fs["particles"].draw(surface, 0)
+
+    # "Mission Complete" text fades in
+    if fs["text_alpha"] > 0:
+        big = fs["font"].render("MISSION COMPLETE", True, (180, 255, 180))
+        big.set_alpha(fs["text_alpha"])
+        surface.blit(big, big.get_rect(center=(screenW // 2, screenH // 2 + 60)))
+
+        sub = fs["small_font"].render("Returning to base...", True, (140, 200, 255))
+        sub.set_alpha(fs["text_alpha"])
+        surface.blit(sub, sub.get_rect(center=(screenW // 2, screenH // 2 + 110)))
 
 # draw everything, follow the logic of update then this is called to draw
 def drawGame():
     gs = gameScene
     ox, oy = gs["cam"].shakeOffset()
-    gs["level"].draw(surface, gs["cam"].x)
+    #draw star field before background
+    gs["stars"].draw(surface, gs["cam"].x)
+    gs["level"].draw(surface, gs["cam"].x, gs["portalGlow"], int(ox), int(oy))
     if gs["state"] == "play":
         gs["player"].draw(surface, gs["cam"].x)
+        gs["gravityFlip"].draw(surface, gs["cam"].x)
     elif gs["state"] == "deathSpin":
         gs["player"].drawSpin(surface, gs["cam"].x)
     gs["particles"].draw(surface, gs["cam"].x)
+    gs["flash"].draw(surface)  # draw flash in ALL states so death/deathSpin flash is visible
 
     # the current mode
     modeLabel = f"MODE: {gs['player'].mode.upper()}"
@@ -424,12 +615,11 @@ def drawGame():
 
     # messages to display win or lose
     if gs["state"] == "dying":
-        t = gs["font"].render("you died - retrying...", True, (255, 120, 120))
+        t = gs["font"].render("You died - Retrying...", True, (255, 120, 120))
         surface.blit(t, t.get_rect(center=(screenW // 2, screenH // 2)))
     elif gs["state"] == "win":
-        t = gs["font"].render("you reached the rocket!", True, (180, 255, 180))
+        t = gs["font"].render("You completed the objective!", True, (180, 255, 180))
         surface.blit(t, t.get_rect(center=(screenW // 2, screenH // 2)))
-
 
 # main loop
 running = True
@@ -487,6 +677,9 @@ while running:
     elif state == GAME:
         updateGame(dt)
         drawGame()
+    elif state == FLYAWAY:
+        updateFlyaway(dt)
+        drawFlyaway()
 
     pygame.display.flip()
 
