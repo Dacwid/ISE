@@ -13,6 +13,7 @@ class ParticleSystem:
         self.parts = []
 
     # update all particles and also remove all that thier lives have expired
+    # all particles are eaffected by gravity
     def update(self, dt):
         for i in range(len(self.parts) - 1, -1, -1):
             p = self.parts[i]
