@@ -21,7 +21,7 @@ portalGravityColor = (180, 120, 240)
 portalJetpackColor = (250, 180, 70)
 font_path = os.path.join(os.environ['WINDIR'], 'Fonts', 'consola.ttf')
 
-MENU, LOADING, GAME, CUTSCENE, NAME_INPUT, FLYAWAY = "menu", "loading", "game", "cutscene", "name_input", "flyaway"
+MENU, LOADING, GAME, CUTSCENE, NAME_INPUT, FLYAWAY, LEVEL_TRANSITION, CREDITS = "menu", "loading", "game", "cutscene", "name_input", "flyaway", "level_transition", "credits"
 updateLoading = pygame.USEREVENT + 1
 
 pygame.init()
@@ -39,6 +39,8 @@ nameInput = ""
 nameCursorVisible = True
 nameCursorTimer = 0.0
 gameScene = None
+levelTransitionScene = None
+creditsScene = None
 assetsLoaded = False
 attempts = 1
 
@@ -290,7 +292,7 @@ def startGameScene(retry=False):
 
 # keybinds
 def handleGameEvent(event):
-    global state, gameScene
+    global state, gameScene, selectedLevel
     gs = gameScene
     if event.type == pygame.KEYDOWN:
         if event.key == pygame.K_ESCAPE:
@@ -461,9 +463,9 @@ def updateGame(dt):
         if gs["winTimer"] <= 0:
             assets.stopMusic()
             if selectedLevel == 1:
-                startFlyaway()
+                startCredits()
             else:
-                state = MENU
+                startLevelTransition()
 
     # update camera and particles every frame
     gs["cam"].update(dt)
@@ -494,7 +496,7 @@ def startFlyaway():
     state = FLYAWAY
 
 def updateFlyaway(dt):
-    global state, flyawayScene
+    global state, flyawayScene, selectedLevel
     fs = flyawayScene
     ship_img = assets.img["spaceship"]
     sw, sh = ship_img.get_size()
@@ -591,6 +593,183 @@ def drawFlyaway():
         sub.set_alpha(fs["text_alpha"])
         surface.blit(sub, sub.get_rect(center=(screenW // 2, screenH // 2 + 110)))
 
+# --- level transition cutscene (cave → surface) ---
+TRANSITION_LINES = [
+    "You've fought your way out of the base's lower sectors.",
+    "The tunnels give way to the lunar surface above —",
+    "vast, silent, and bathed in starlight.",
+    "The emergency rocket still awaits at the far end.",
+    "One more push. Do not stop now.",
+]
+
+transitionFont = pygame.font.Font(font_path, 24)
+transitionHintFont = pygame.font.Font(font_path, 18)
+
+
+def startLevelTransition():
+    global state, levelTransitionScene
+    assets.stopMusic()
+    levelTransitionScene = {
+        "phase": "fade_in",
+        "text_alpha": 0.0,
+        "overlay_alpha": 0,
+    }
+    state = LEVEL_TRANSITION
+
+
+def handleLevelTransitionEvent(event):
+    ls = levelTransitionScene
+    if ls["phase"] == "display":
+        if event.type == pygame.KEYDOWN or (event.type == pygame.MOUSEBUTTONDOWN and event.button == 1):
+            ls["phase"] = "fade_out"
+
+
+def updateLevelTransition(dt):
+    global state, levelTransitionScene
+    ls = levelTransitionScene
+
+    if ls["phase"] == "fade_in":
+        ls["text_alpha"] = min(255.0, ls["text_alpha"] + 3.0 * dt)
+        if ls["text_alpha"] >= 255:
+            ls["phase"] = "display"
+
+    elif ls["phase"] == "fade_out":
+        ls["overlay_alpha"] = min(255, ls["overlay_alpha"] + int(5 * dt))
+        if ls["overlay_alpha"] >= 255:
+            ls["phase"] = "done"
+
+    elif ls["phase"] == "done":
+        assets.playMusic("music_menu")
+        state = MENU
+
+
+def drawLevelTransition():
+    ls = levelTransitionScene
+    surface.fill((0, 0, 0))
+
+    alpha = int(ls["text_alpha"])
+    lineSpacing = 40
+    totalH = len(TRANSITION_LINES) * lineSpacing
+    startY = screenH // 2 - totalH // 2
+
+    for i, line in enumerate(TRANSITION_LINES):
+        rendered = transitionFont.render(line, True, white)
+        rendered.set_alpha(alpha)
+        surface.blit(rendered, rendered.get_rect(center=(screenW // 2, startY + i * lineSpacing)))
+
+    if ls["phase"] == "display":
+        hint = transitionHintFont.render("Press SPACE or click to continue", True, (110, 110, 130))
+        hint.set_alpha(alpha)
+        surface.blit(hint, hint.get_rect(center=(screenW // 2, screenH - 50)))
+
+    if ls["phase"] in ("fade_out", "done"):
+        overlay = pygame.Surface((screenW, screenH))
+        overlay.fill((0, 0, 0))
+        overlay.set_alpha(ls["overlay_alpha"])
+        surface.blit(overlay, (0, 0))
+
+
+# --- credits / congratulations cutscene ---
+def buildCreditsDialogue(name):
+    return [
+        "You made it. I genuinely didn't think anyone could pull that off.",
+        f"After the lower sectors collapsed I lost your beacon signal. I kept broadcasting anyway — just hoping.",
+        f"Every member of this crew is alive because of you, {name}. Every single one.",
+        "The ship is fuelled and ready. I'll see you back at base. And... thank you.",
+    ]
+
+
+def startCredits():
+    global state, creditsScene
+    creditsScene = {
+        "dialogue": buildCreditsDialogue(playerName),
+        "index": 0,
+        "phase": "slide_in",
+        "portrait_x": -620.0,
+        "portrait_target_x": float((screenW - 600) // 2),
+        "fade_out_alpha": 0.0,
+    }
+    assets.playMusic("music_menu", volume=0.15)
+    state = CREDITS
+
+
+def handleCreditsEvent(event):
+    cs = creditsScene
+    if cs["phase"] != "display":
+        return
+    if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
+        cs["index"] += 1
+        if cs["index"] >= len(cs["dialogue"]):
+            cs["index"] = len(cs["dialogue"]) - 1
+            cs["phase"] = "fade_out"
+    if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+        if skipBtn.collidepoint(event.pos):
+            cs["phase"] = "fade_out"
+            cs["fade_out_alpha"] = 255.0
+
+
+def updateCredits(dt):
+    global state, creditsScene
+    cs = creditsScene
+
+    if cs["phase"] == "slide_in":
+        cs["portrait_x"] += (cs["portrait_target_x"] - cs["portrait_x"]) * 0.07 * dt
+        if abs(cs["portrait_x"] - cs["portrait_target_x"]) < 1.5:
+            cs["portrait_x"] = cs["portrait_target_x"]
+            cs["phase"] = "display"
+
+    elif cs["phase"] == "fade_out":
+        cs["fade_out_alpha"] = min(255.0, cs["fade_out_alpha"] + 5.0 * dt)
+        if cs["fade_out_alpha"] >= 255:
+            cs["phase"] = "done"
+
+    elif cs["phase"] == "done":
+        assets.stopMusic()
+        startFlyaway()
+
+
+def drawCredits():
+    cs = creditsScene
+    surface.fill((0, 0, 0))
+
+    if commanderPortrait:
+        surface.blit(commanderPortrait, (int(cs["portrait_x"]), 40))
+
+    boxH = 170
+    boxY = screenH - boxH - 20
+    boxX = 20
+    boxW = screenW - 40
+
+    boxSurf = pygame.Surface((boxW, boxH), pygame.SRCALPHA)
+    boxSurf.fill((15, 15, 25, 235))
+    surface.blit(boxSurf, (boxX, boxY))
+    pygame.draw.rect(surface, (180, 180, 200), (boxX, boxY, boxW, boxH), 2, border_radius=4)
+
+    nameSurf = nameFont.render("Commander Hayes", True, (120, 200, 255))
+    surface.blit(nameSurf, (boxX + 16, boxY - 30))
+
+    lines = wrapText(cs["dialogue"][cs["index"]], dlgFont, boxW - 32)
+    for i, line in enumerate(lines):
+        surface.blit(dlgFont.render(line, True, white), (boxX + 16, boxY + 16 + i * 30))
+
+    prog = hintFont.render(f"{cs['index'] + 1} / {len(cs['dialogue'])}", True, (100, 100, 120))
+    surface.blit(prog, (boxX + 16, boxY + boxH - 26))
+
+    hint = hintFont.render("SPACE — Continue", True, (120, 120, 140))
+    surface.blit(hint, (boxX + boxW - hint.get_width() - 16, boxY + boxH - 26))
+
+    pygame.draw.rect(surface, (40, 40, 60), skipBtn, border_radius=4)
+    pygame.draw.rect(surface, (120, 120, 150), skipBtn, 1, border_radius=4)
+    skipLabel = hintFont.render("SKIP >>", True, white)
+    surface.blit(skipLabel, skipLabel.get_rect(center=skipBtn.center))
+
+    if cs["phase"] in ("fade_out", "done"):
+        overlay = pygame.Surface((screenW, screenH))
+        overlay.fill((0, 0, 0))
+        overlay.set_alpha(int(cs["fade_out_alpha"]))
+        surface.blit(overlay, (0, 0))
+
+
 # draw everything, follow the logic of update then this is called to draw
 def drawGame():
     gs = gameScene
@@ -650,6 +829,12 @@ while running:
                     assetsLoaded = True
                 startGameScene()
 
+        if state == LEVEL_TRANSITION:
+            handleLevelTransitionEvent(event)
+
+        if state == CREDITS:
+            handleCreditsEvent(event)
+
         if state == GAME:
             handleGameEvent(event)
 
@@ -682,6 +867,12 @@ while running:
     elif state == FLYAWAY:
         updateFlyaway(dt)
         drawFlyaway()
+    elif state == LEVEL_TRANSITION:
+        updateLevelTransition(dt)
+        drawLevelTransition()
+    elif state == CREDITS:
+        updateCredits(dt)
+        drawCredits()
 
     pygame.display.flip()
 
