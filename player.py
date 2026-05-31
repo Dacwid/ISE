@@ -8,7 +8,7 @@ gravityFlipLerp = 0.06
 gravityFloat = 0.55       
 gravityFloatMaxSpeed = 5.0 
 coyoteFrames = 6
-animSkip = {"run":4, "jump": 4}   # frames to wait per anim state (higher = slower)
+animSkip = {"run":4, "jump": 4}   # frames to wait per anim frame
 modeJump, modeGravity, modeJetpack = "jump", "gravity", "jetpack"
 from assets import img, anim, playSfx
 
@@ -26,10 +26,10 @@ class Player:
 
         self.gravitySign = 1.0
         self.gravityTarget = 1.0
-        self.gravityFlipped = False   # flag set in onSpacePressed, consumed in updateGame
+        self.gravityFlipped = False   
 
         self.thrusting = False
-        self.thrustStarted = False  # one-shot flag for jetpack ignition shockwave
+        self.thrustStarted = False  
 
         # animation state
         self.frameIndex = 0
@@ -60,10 +60,10 @@ class Player:
                 self.vy = jumpVelocity
                 self.coyoteTimer = 0
                 playSfx("jump")
-            # if in gravity switching mode then switch gravity
+        # if in gravity switching mode then switch gravity
         elif self.mode == modeGravity:
             self.gravityTarget *= -1
-            self.gravityFlipped = True   # signal to updateGame that a flip just occurred
+            self.gravityFlipped = True   
             playSfx("gravity_flip")
 
     # hold space for jetpack
