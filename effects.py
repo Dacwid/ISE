@@ -17,7 +17,7 @@ class ParticleSystem:
     def __init__(self):
         self.parts = []
 
-    # update all particles and also remove all that thier lives have expired
+    # update all particles and also remove all that their lives have expired
     # all particles are affected by gravity
     def update(self, dt):
         for i in range(len(self.parts) - 1, -1, -1):
@@ -99,29 +99,6 @@ class ParticleSystem:
             10, (255, 255, 200), radius=4, glow=True,
         )
 
-    # side vent sparks — small jets from the sides of the pack
-    def jetpackSideVents(self, x, y):
-        for side in (-1, 1):
-            if random.random() < 0.5:
-                color = random.choice([(255, 160, 40), (255, 220, 100), (200, 120, 20)])
-                self.spawn(
-                    x + side * random.uniform(8, 14), y + random.uniform(-4, 4),
-                    side * random.uniform(1.5, 3.5), random.uniform(-0.5, 0.5),
-                    12, color, radius=random.randint(2, 4), glow=True,
-                )
-
-    # energy aura — soft orange halo around the player while thrusting
-    def jetpackAura(self, x, y):
-        if random.random() < 0.35:
-            angle = random.uniform(0, 2 * math.pi)
-            dist = random.uniform(12, 22)
-            color = (255, random.randint(120, 200), 20)
-            self.spawn(
-                x + math.cos(angle) * dist, y + math.sin(angle) * dist,
-                math.cos(angle) * 0.3, math.sin(angle) * 0.3,
-                14, color, radius=random.randint(2, 5), gravity=0.0, glow=True,
-            )
-
     # ignition burst — shockwave of sparks on thrust-start
     def jetpackIgnition(self, x, y):
         for i in range(24):
@@ -174,7 +151,6 @@ class ParticleSystem:
                 random.uniform(40, 80), color,
                 radius=random.randint(3, 7), gravity=0.1, glow=True,
             )
-
 
     #gravity flip effect
     def gravityFlipBurst(self, x, y, flippingUp):
@@ -268,25 +244,6 @@ class PortalGlow:
             pygame.draw.circle(glow_surf, (r, g, b, a),
                                (radius * 2, radius * 2), layer)
         surf.blit(glow_surf, (sx - radius * 2, sy - radius * 2))
-
-class StarField:
-    def __init__(self, count=120):
-        self.stars = []
-        for _ in range(count):
-            self.stars.append({
-                "x": random.uniform(0, 1280),
-                "y": random.uniform(0, 720),
-                "r": random.randint(1, 2),
-                "speed": random.uniform(0.05, 0.25),  # parallax factor
-                "bright": random.randint(140, 255),
-            })
-
-    def draw(self, surf, camX):
-        for s in self.stars:
-            sx = int((s["x"] - camX * s["speed"]) % 1280)
-            sy = int(s["y"])
-            b = s["bright"]
-            pygame.draw.circle(surf, (b, b, b), (sx, sy), s["r"])
 
 class GravityFlipEffect:
     def __init__(self):

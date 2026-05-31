@@ -7,7 +7,7 @@ from pygame_menu import themes
 import assets
 from player import Player
 from level import Level
-from effects import ParticleSystem, Camera, ScreenFlash, PortalGlow, StarField, GravityFlipEffect
+from effects import ParticleSystem, Camera, ScreenFlash, PortalGlow, GravityFlipEffect
 import os
 
 screenW, screenH = 1280, 720
@@ -274,7 +274,6 @@ def startGameScene(retry=False):
         "flash": ScreenFlash(),
         "portalGlow": PortalGlow(),
         "gravityFlip": GravityFlipEffect(),
-        "stars": StarField(150),
         "fireworkTimer": 0.0,
         "prevOnGround": False,
         "prevVy": 0.0,
@@ -390,8 +389,6 @@ def updateGame(dt):
             px = gs["player"].x + gs["player"].w / 2
             py = gs["player"].y + gs["player"].h
             gs["particles"].jetpackFlame(px, py)
-            gs["particles"].jetpackSideVents(px, gs["player"].y + gs["player"].h / 2)
-            gs["particles"].jetpackAura(px, gs["player"].y + gs["player"].h / 2)
             assets.sfx["thrust"].set_volume(0.2 + 0.3 * random.random())
 
         # jetpack ignition burst (one-shot on thrust start)
@@ -482,7 +479,6 @@ def startFlyaway():
         "ship_wobble": 0.0,                  # horizontal sway timer
         "phase": "rise",                     # rise → gone → done
         "timer": 0.0,
-        "stars": StarField(200),
         "particles": ParticleSystem(),
         "flame_timer": 0.0,
         "alpha": 255,
@@ -560,13 +556,11 @@ def updateFlyaway(dt):
         assets.stopMusic()
         state = MENU
 
-    fs["stars"].draw(surface, 0)   # drawn in update for ordering
     fs["particles"].update(dt)
 
 def drawFlyaway():
     fs = flyawayScene
     surface.fill((5, 5, 18))        # deep space black
-    fs["stars"].draw(surface, 0)
 
     ship_img = assets.img["spaceship"]
     sw, sh = ship_img.get_size()
@@ -596,7 +590,6 @@ def drawGame():
     gs = gameScene
     ox, oy = gs["cam"].shakeOffset()
     #draw star field before background
-    gs["stars"].draw(surface, gs["cam"].x)
     gs["level"].draw(surface, gs["cam"].x, gs["portalGlow"], int(ox), int(oy))
     if gs["state"] == "play":
         gs["player"].draw(surface, gs["cam"].x)
